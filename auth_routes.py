@@ -1,6 +1,6 @@
 import secrets
 import datetime
-from flask import Blueprint, request, jsonify, url_for, current_app, render_template
+from flask import Blueprint, request, jsonify, url_for, current_app, render_template, session, redirect
 from werkzeug.security import generate_password_hash
 from app import db
 from models import User, UserRole
@@ -94,39 +94,78 @@ def verify_email(token):
 @auth_bp.route('/api/login', methods=['POST'])
 def login():
     """API route for user login (both client and operations users)"""
-    data = request.get_json()
-    
-    # Validate required fields
-    if not all(k in data for k in ('username', 'password')):
-        return jsonify({'message': 'Missing username or password!'}), 400
+    # Check if this is a form submission or an API call
+    if request.content_type and 'application/json' in request.content_type:
+        # API JSON request
+        data = request.get_json()
+        
+        # Validate required fields
+        if not all(k in data for k in ('username', 'password')):
+            return jsonify({'message': 'Missing username or password!'}), 400
+        
+        username = data['username']
+        password = data['password']
+        is_api = True
+    else:
+        # Form submission
+        username = request.form.get('username')
+        password = request.form.get('password')
+        is_api = False
+        
+        if not username or not password:
+            if is_api:
+                return jsonify({'message': 'Missing username or password!'}), 400
+            else:
+                return render_template('login.html', error='Username and password are required')
     
     # Find user
-    user = User.query.filter_by(username=data['username']).first()
+    user = User.query.filter_by(username=username).first()
     
     if not user:
-        return jsonify({'message': 'Invalid username or password!'}), 401
+        if is_api:
+            return jsonify({'message': 'Invalid username or password!'}), 401
+        else:
+            return render_template('login.html', error='Invalid username or password')
     
     # Check password
-    if not user.check_password(data['password']):
-        return jsonify({'message': 'Invalid username or password!'}), 401
+    if not user.check_password(password):
+        if is_api:
+            return jsonify({'message': 'Invalid username or password!'}), 401
+        else:
+            return render_template('login.html', error='Invalid username or password')
     
     # Check if client user is verified
     if user.role == UserRole.CLIENT and not user.is_verified:
-        return jsonify({'message': 'Please verify your email before logging in!'}), 401
+        if is_api:
+            return jsonify({'message': 'Please verify your email before logging in!'}), 401
+        else:
+            return render_template('login.html', error='Please verify your email before logging in')
     
     # Generate token
     token = generate_token(user.id, user.role)
     
-    return jsonify({
-        'message': 'Login successful!',
-        'token': token,
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'role': user.role.value
-        }
-    }), 200
+    # Store user info in session for server-side auth
+    session['user_id'] = user.id
+    session['username'] = user.username
+    session['role'] = user.role.value
+    
+    if is_api:
+        return jsonify({
+            'message': 'Login successful!',
+            'token': token,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role.value
+            }
+        }), 200
+    else:
+        # Redirect based on role
+        if user.role == UserRole.OPERATIONS:
+            return redirect('/upload')
+        else:
+            return redirect('/files')
 
 @auth_bp.route('/api/create-ops-user', methods=['POST'])
 @token_required

@@ -1,8 +1,8 @@
 import os
-from flask import Blueprint, request, jsonify, send_file, current_app, url_for
+from flask import Blueprint, request, jsonify, send_file, current_app, url_for, session, redirect, render_template
 from werkzeug.utils import secure_filename
 from app import db
-from models import File, UserRole
+from models import File, UserRole, User
 from utils import token_required, require_role, save_file, encrypt_url, validate_download_token
 
 file_bp = Blueprint('file', __name__)

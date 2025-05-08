@@ -17,7 +17,7 @@
                     </p>
                 </div>
                 
-                <form id="upload-form" enctype="multipart/form-data">
+                <form id="upload-form" action="/api/upload" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="file" class="form-label">Select File</label>
                         <input type="file" class="form-control" id="file" name="file" required 
@@ -58,88 +58,20 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is logged in and is operations user
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
-    if (!token || !user || user.role !== 'operations') {
-        // Redirect to login if not operations user
-        window.location.href = '/login';
-        return;
-    }
-    
-    // Show nav elements based on user role
-    document.querySelectorAll('.user-ops').forEach(el => el.classList.remove('d-none'));
-    document.querySelectorAll('.user-auth').forEach(el => el.classList.remove('d-none'));
-    document.querySelectorAll('.user-no-auth').forEach(el => el.classList.add('d-none'));
-    
-    // Upload form submission
-    const uploadForm = document.getElementById('upload-form');
-    
-    uploadForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const fileInput = document.getElementById('file');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            showAlert('danger', 'Please select a file to upload.');
-            return;
-        }
-        
-        // Check file extension
-        const fileExt = file.name.split('.').pop().toLowerCase();
-        if (!['pptx', 'docx', 'xlsx'].includes(fileExt)) {
-            showAlert('danger', 'Invalid file type. Allowed types: pptx, docx, xlsx');
-            return;
-        }
-        
-        // Create form data
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        try {
-            // Show loading
-            const submitBtn = uploadForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
-            
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                // Show success message
-                showAlert('success', 'File uploaded successfully!');
-                
-                // Clear form
-                uploadForm.reset();
-                
-                // Refresh file history
-                loadFileHistory();
-            } else {
-                showAlert('danger', data.message || 'Upload failed. Please try again.');
-            }
-        } catch (error) {
-            showAlert('danger', 'An error occurred. Please try again later.');
-            console.error('Error:', error);
-        } finally {
-            // Reset button
-            const submitBtn = uploadForm.querySelector('button[type="submit"]');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Upload';
-        }
-    });
+    // Update the UI based on authentication state
+    updateAuthState();
     
     // Load file history on page load
     loadFileHistory();
 });
+
+// Update UI based on authentication state
+function updateAuthState() {
+    // Show navigation elements based on user role
+    document.querySelectorAll('.user-ops').forEach(el => el.classList.remove('d-none'));
+    document.querySelectorAll('.user-auth').forEach(el => el.classList.remove('d-none'));
+    document.querySelectorAll('.user-no-auth').forEach(el => el.classList.add('d-none'));
+}
 
 async function loadFileHistory() {
     const token = localStorage.getItem('token');

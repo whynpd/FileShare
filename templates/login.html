@@ -10,7 +10,12 @@
                 <h2 class="text-center">Login</h2>
             </div>
             <div class="card-body">
-                <form id="login-form">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+                <form id="login-form" action="/api/login" method="POST">
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <input type="text" class="form-control" id="username" name="username" required>
@@ -35,52 +40,8 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('login-form');
-    
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: username,
-                    password: password
-                }),
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                // Store token and user info in localStorage
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                
-                // Show success message
-                showAlert('success', 'Login successful! Redirecting...');
-                
-                // Redirect based on user role
-                setTimeout(() => {
-                    if (data.user.role === 'operations') {
-                        window.location.href = '/upload';
-                    } else {
-                        window.location.href = '/files';
-                    }
-                }, 1000);
-            } else {
-                showAlert('danger', data.message || 'Login failed. Please try again.');
-            }
-        } catch (error) {
-            showAlert('danger', 'An error occurred. Please try again later.');
-            console.error('Error:', error);
-        }
-    });
+    // Form will be submitted normally to server
+    // No need to handle it with JavaScript
 });
 
 function showAlert(type, message) {
