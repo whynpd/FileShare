@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Login | Secure File Sharing System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="text-center">Login</h2>
+            </div>
+            <div class="card-body">
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <p class="mb-0">Don't have an account? <a href="/signup">Sign up</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
+    
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                }),
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Store token and user info in localStorage
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                // Show success message
+                showAlert('success', 'Login successful! Redirecting...');
+                
+                // Redirect based on user role
+                setTimeout(() => {
+                    if (data.user.role === 'operations') {
+                        window.location.href = '/upload';
+                    } else {
+                        window.location.href = '/files';
+                    }
+                }, 1000);
+            } else {
+                showAlert('danger', data.message || 'Login failed. Please try again.');
+            }
+        } catch (error) {
+            showAlert('danger', 'An error occurred. Please try again later.');
+            console.error('Error:', error);
+        }
+    });
+});
+
+function showAlert(type, message) {
+    const alertsContainer = document.getElementById('alerts-container');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    alertsContainer.appendChild(alert);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        alert.classList.remove('show');
+        setTimeout(() => {
+            alert.remove();
+        }, 150);
+    }, 5000);
+}
+</script>
+{% endblock %}

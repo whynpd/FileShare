@@ -1,0 +1,80 @@
+/* Custom styles for Secure File Sharing System */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    flex: 1;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+/* File cards */
+.file-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.file-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Alert container for dynamic alerts */
+#alerts-container {
+    position: relative;
+    z-index: 1000;
+}
+
+/* File type icons */
+.file-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Login/Signup form */
+.auth-card {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* File table responsive styles */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Loading spinner */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+/* Download link styles */
+.download-link {
+    word-break: break-all;
+    background-color: var(--bs-gray-800);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+}
+
+/* Verification page styles */
+.verification-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Custom buttons */
+.btn-download {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-download:hover {
+    transform: scale(1.05);
+}

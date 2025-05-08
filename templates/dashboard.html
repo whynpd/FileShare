@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Secure File Sharing System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h2>Welcome to Secure File Sharing System</h2>
+            </div>
+            <div class="card-body">
+                <div id="welcome-message">
+                    <p class="lead">Please <a href="/login">login</a> or <a href="/signup">sign up</a> to continue.</p>
+                </div>
+                
+                <div id="user-dashboard" class="d-none">
+                    <h3>Welcome, <span id="user-name"></span>!</h3>
+                    <p class="lead">What would you like to do today?</p>
+                    
+                    <div class="row mt-4">
+                        <!-- Operations User Options -->
+                        <div class="col-md-6 user-ops d-none">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">File Management</h5>
+                                    <p class="card-text">Upload and manage files in the system.</p>
+                                    <a href="/upload" class="btn btn-primary">Upload Files</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Client User Options -->
+                        <div class="col-md-6 user-client d-none">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Available Files</h5>
+                                    <p class="card-text">Browse, download and manage files shared with you.</p>
+                                    <a href="/files" class="btn btn-primary">View Files</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is logged in
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (token && user) {
+        // Show user dashboard
+        document.getElementById('welcome-message').classList.add('d-none');
+        document.getElementById('user-dashboard').classList.remove('d-none');
+        document.getElementById('user-name').textContent = user.username;
+        
+        // Show/hide elements based on user role
+        if (user.role === 'operations') {
+            document.querySelectorAll('.user-ops').forEach(el => el.classList.remove('d-none'));
+        } else if (user.role === 'client') {
+            document.querySelectorAll('.user-client').forEach(el => el.classList.remove('d-none'));
+        }
+        
+        // Show authenticated user elements
+        document.querySelectorAll('.user-auth').forEach(el => el.classList.remove('d-none'));
+        document.querySelectorAll('.user-no-auth').forEach(el => el.classList.add('d-none'));
+    } else {
+        // Show welcome message for non-authenticated users
+        document.querySelectorAll('.user-no-auth').forEach(el => el.classList.remove('d-none'));
+        document.querySelectorAll('.user-auth').forEach(el => el.classList.add('d-none'));
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Files | Secure File Sharing System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h2>Available Files</h2>
+            </div>
+            <div class="card-body">
+                <div id="files-container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading files...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is logged in and is client user
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (!token || !user || user.role !== 'client') {
+        // Redirect to login if not client user
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Show nav elements based on user role
+    document.querySelectorAll('.user-client').forEach(el => el.classList.remove('d-none'));
+    document.querySelectorAll('.user-auth').forEach(el => el.classList.remove('d-none'));
+    document.querySelectorAll('.user-no-auth').forEach(el => el.classList.add('d-none'));
+    
+    // Load files
+    loadFiles();
+    
+    // Download file function - will be attached to download buttons
+    window.downloadFile = function(fileId) {
+        getDownloadLink(fileId);
+    };
+});
+
+async function loadFiles() {
+    const token = localStorage.getItem('token');
+    const filesContainer = document.getElementById('files-container');
+    
+    try {
+        const response = await fetch('/api/files', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (data.files && data.files.length > 0) {
+                // Create table for files
+                let tableHTML = `
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Type</th>
+                                    <th>Size</th>
+                                    <th>Uploaded</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                // Add each file to the table
+                data.files.forEach(file => {
+                    const fileSize = formatFileSize(file.file_size);
+                    tableHTML += `
+                        <tr>
+                            <td>${file.filename}</td>
+                            <td>${file.file_type}</td>
+                            <td>${fileSize}</td>
+                            <td>${file.uploaded_at}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="downloadFile(${file.id})">
+                                    Download
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                filesContainer.innerHTML = tableHTML;
+            } else {
+                // No files available
+                filesContainer.innerHTML = `
+                    <div class="alert alert-info text-center">
+                        <p>No files are available for download.</p>
+                    </div>
+                `;
+            }
+        } else {
+            // Error loading files
+            filesContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <p>Error loading files: ${data.message || 'Unknown error'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading files:', error);
+        filesContainer.innerHTML = `
+            <div class="alert alert-danger">
+                <p>Error loading files. Please try again later.</p>
+            </div>
+        `;
+    }
+}
+
+async function getDownloadLink(fileId) {
+    const token = localStorage.getItem('token');
+    
+    try {
+        // Show download status in a modal
+        showDownloadModal('Generating download link...');
+        
+        const response = await fetch(`/api/download-file/${fileId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update modal for download
+            updateDownloadModal('Download Ready', `
+                <p>Your download link is ready.</p>
+                <p class="text-center">
+                    <a href="${data['download-link']}" class="btn btn-success" target="_blank">
+                        Download File
+                    </a>
+                </p>
+                <div class="alert alert-warning mt-3">
+                    <small>This download link is encrypted and will expire after use.</small>
+                </div>
+            `);
+        } else {
+            // Show error in modal
+            updateDownloadModal('Error', `
+                <div class="alert alert-danger">
+                    <p>Error generating download link: ${data.message || 'Unknown error'}</p>
+                </div>
+            `);
+        }
+    } catch (error) {
+        console.error('Error getting download link:', error);
+        // Show error in modal
+        updateDownloadModal('Error', `
+            <div class="alert alert-danger">
+                <p>Error generating download link. Please try again later.</p>
+            </div>
+        `);
+    }
+}
+
+function showDownloadModal(message) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('download-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create new modal
+    const modalHTML = `
+        <div class="modal fade" id="download-modal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="downloadModalLabel">Download File</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="download-modal-content">
+                        <div class="text-center py-3">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">${message}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Append modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('download-modal'));
+    modal.show();
+}
+
+function updateDownloadModal(title, content) {
+    const modalTitle = document.getElementById('downloadModalLabel');
+    const modalContent = document.getElementById('download-modal-content');
+    
+    if (modalTitle && modalContent) {
+        modalTitle.textContent = title;
+        modalContent.innerHTML = content;
+    }
+}
+
+function formatFileSize(sizeInBytes) {
+    if (sizeInBytes < 1024) {
+        return sizeInBytes + ' B';
+    } else if (sizeInBytes < 1024 * 1024) {
+        return (sizeInBytes / 1024).toFixed(2) + ' KB';
+    } else if (sizeInBytes < 1024 * 1024 * 1024) {
+        return (sizeInBytes / (1024 * 1024)).toFixed(2) + ' MB';
+    } else {
+        return (sizeInBytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+}
+</script>
+{% endblock %}
