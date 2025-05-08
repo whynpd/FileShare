@@ -8,26 +8,74 @@ from utils import token_required, require_role, save_file, encrypt_url, validate
 file_bp = Blueprint('file', __name__)
 
 @file_bp.route('/api/upload', methods=['POST'])
-@token_required
-@require_role([UserRole.OPERATIONS])
-def upload_file(current_user):
-    """Upload file (operations user only)"""
+def upload_file():
+    """Upload file (operations user only) - with support for both API and form-based requests"""
+    # Check for session-based authentication
+    user_id = session.get('user_id')
+    role = session.get('role')
+    
+    # If session auth fails, try token auth
+    if not user_id or role != UserRole.OPERATIONS.value:
+        auth_header = request.headers.get('Authorization')
+        
+        if not auth_header or not auth_header.startswith('Bearer '):
+            # For form-based requests, redirect to login page
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                return redirect('/login')
+            return jsonify({'message': 'Authentication required!'}), 401
+        
+        # Extract token and verify
+        token = auth_header.split(" ")[1]
+        try:
+            import jwt
+            data = jwt.decode(
+                token, 
+                current_app.config['JWT_SECRET_KEY'], 
+                algorithms=['HS256']
+            )
+            user = User.query.get(data['sub'])
+            
+            if not user or user.role != UserRole.OPERATIONS:
+                return jsonify({'message': 'Permission denied!'}), 403
+                
+            current_user = user
+        except Exception as e:
+            # For form-based requests, redirect to login page with error
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                return render_template('login.html', error='Invalid or expired token. Please login again.')
+            return jsonify({'message': 'Invalid token!'}), 401
+    else:
+        # Use session authentication
+        current_user = User.query.get(user_id)
+        if not current_user or current_user.role != UserRole.OPERATIONS:
+            return redirect('/login')
+    
     # Check if file part exists in request
     if 'file' not in request.files:
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            return render_template('upload.html', error='No file selected!')
         return jsonify({'message': 'No file part in the request!'}), 400
         
     file = request.files['file']
     
     # Check if a file was selected
     if file.filename == '':
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            return render_template('upload.html', error='No file selected!')
         return jsonify({'message': 'No file selected!'}), 400
     
     # Save file to disk and database
     file_record, error = save_file(file, current_user.id)
     
     if error:
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            return render_template('upload.html', error=f'Error saving file: {error}')
         return jsonify({'message': f'Error saving file: {error}'}), 500
     
+    # Respond based on request type
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        return render_template('upload.html', success=f'File {file.filename} uploaded successfully!')
+        
     return jsonify({
         'message': 'File uploaded successfully!',
         'file': file_record.to_dict()

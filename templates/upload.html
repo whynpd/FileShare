@@ -17,6 +17,18 @@
                     </p>
                 </div>
                 
+                {% if error %}
+                <div class="alert alert-danger">
+                    <p class="mb-0">{{ error }}</p>
+                </div>
+                {% endif %}
+                
+                {% if success %}
+                <div class="alert alert-success">
+                    <p class="mb-0">{{ success }}</p>
+                </div>
+                {% endif %}
+                
                 <form id="upload-form" action="/api/upload" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="file" class="form-label">Select File</label>
